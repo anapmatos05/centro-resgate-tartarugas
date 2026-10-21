@@ -15,6 +15,9 @@ let estado = "inicio";
 // Imagem do logótipo
 let logo;
 
+let tartarugaAtual = null; // Variável global para guardar a tartaruga ativa no turno
+
+
 
 // -----------------------------------------------------
 // CONFIGURAÇÕES DO CANVAS
@@ -228,7 +231,6 @@ function desenhaResultado() {
 // -----------------------------------------------------
 
 function mousePressed() {
-  // Se estivermos no ecrã inicial e clicarmos dentro da área do botão "Começar turno"
   if (estado === "inicio") {
     let botaoX = width / 2 - 150;
     let botaoY = 590;
@@ -241,10 +243,14 @@ function mousePressed() {
       mouseY >= botaoY &&
       mouseY <= botaoY + botaoAltura
     ) {
-      estado = "execucao"; // Muda para o ecrã de jogo
+      estado = "execucao"; 
+      
+      // Gera uma das 7 espécies de tartaruga ao acaso quando o jogo começa
+      tartarugaAtual = new Tartaruga(); 
     }
   }
 }
+
 
 
 // -----------------------------------------------------
@@ -266,4 +272,22 @@ function desenhaRodape() {
   // Dados da aluna
   textAlign(RIGHT, BOTTOM);
   text(AUTOR, width - margem, height - margem);
+}
+// Variável global para guardar a tartaruga ativa no turno
+
+// Quando o jogo começa, criamos a primeira tartaruga
+function iniciarTurnoJogo() {
+  tartarugaAtual = new Tartaruga();
+}
+
+function desenhaJogo() {
+  background(COR_FUNDO);
+  
+  // Se existir uma tartaruga ativa, desenha-a no centro do ecrã
+  if (tartarugaAtual) {
+    tartarugaAtual.desenhar(width / 2, height / 2);
+  }
+
+  // Rodapé obrigatório
+  desenhaRodape();
 }
