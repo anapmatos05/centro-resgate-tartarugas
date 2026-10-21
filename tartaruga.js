@@ -5,7 +5,6 @@
 
 class Tartaruga {
   constructor() {
-    // Lista das 7 espécies marinhas definidas para o projeto
     const especiesDisponiveis = [
       "Verde", 
       "Comum", 
@@ -16,154 +15,149 @@ class Tartaruga {
       "Kemp"
     ];
     
-    // Escolhe uma espécie aleatoriamente ao iniciar o turno
     this.especie = random(especiesDisponiveis);
-    
-    // Inicializa os atributos únicos de cada espécie (saúde, lixo, cores e tamanho)
     this.inicializarEspecie();
   }
 
-  // Atribui características visuais e biológicas com base na espécie
   inicializarEspecie() {
     switch (this.especie) {
       case "Verde":
+        this.saudeMaxima = 100;
         this.saude = 100;
         this.qtdLixo = 1;
         this.corCasco = color(90, 160, 110);
-        this.corBase = color(110, 190, 130);
+        this.corBase = color(160, 215, 175);
         this.escala = 1.0;
         break;
         
       case "Comum":
+        this.saudeMaxima = 150;
         this.saude = 150;
         this.qtdLixo = 3;
         this.corCasco = color(150, 100, 60);
-        this.corBase = color(190, 130, 80);
+        this.corBase = color(210, 170, 130);
         this.escala = 1.1;
         break;
         
       case "Oliva":
+        this.saudeMaxima = 60;
         this.saude = 60;
         this.qtdLixo = 1;
         this.corCasco = color(130, 130, 90);
-        this.corBase = color(160, 160, 110);
+        this.corBase = color(180, 180, 140);
         this.escala = 0.85;
         break;
 
       case "Couro":
+        this.saudeMaxima = 120;
         this.saude = 120;
         this.qtdLixo = 4;
-        this.corCasco = color(50, 60, 70); // Mais escura e distinta
-        this.corBase = color(80, 90, 100);
+        this.corCasco = color(60, 75, 85);
+        this.corBase = color(120, 135, 145);
         this.escala = 1.25;
         break;
 
       case "Pente":
+        this.saudeMaxima = 70;
         this.saude = 70;
         this.qtdLixo = 2;
-        this.corCasco = color(170, 110, 60); // Tons amarelados/castanhos
-        this.corBase = color(200, 140, 80);
+        this.corCasco = color(170, 110, 60);
+        this.corBase = color(220, 170, 120);
         this.escala = 0.9;
         break;
 
       case "Australiana":
+        this.saudeMaxima = 100;
         this.saude = 100;
         this.qtdLixo = 2;
         this.corCasco = color(80, 140, 130);
-        this.corBase = color(100, 170, 150);
+        this.corBase = color(150, 200, 190);
         this.escala = 1.0;
         break;
 
       case "Kemp":
+        this.saudeMaxima = 50;
         this.saude = 50;
         this.qtdLixo = 1;
         this.corCasco = color(140, 90, 90);
-        this.corBase = color(170, 110, 110);
+        this.corBase = color(190, 140, 140);
         this.escala = 0.8;
         break;
     }
   }
 
-  // Método responsável por desenhar a tartaruga vetorizada no ecrã
   desenhar(x, y) {
     push();
     translate(x, y);
-    scale(this.escala); // Altera o tamanho consoante a espécie
 
+    // -----------------------------------------------------
+    // Círculo tracejado à volta (Área de calmaria)
+    // -----------------------------------------------------
+    stroke(80, 180, 170, 180);
+    strokeWeight(2);
+    drawingContext.setLineDash([8, 8]); // Efeito tracejado p5
+    noFill();
+    ellipse(0, 0, 380 * this.escala, 380 * this.escala);
+    drawingContext.setLineDash([]); // Limpa o tracejado para o resto
+
+    // Desenho da tartaruga
+    scale(this.escala);
     noStroke();
 
-    // -----------------------------------------------------
     // 1. Barbatanas Traseiras
-    // -----------------------------------------------------
     fill(this.corBase);
-    // Esquerda
-    ellipse(-60, 70, 45, 80);
-    // Direita
-    ellipse(60, 70, 45, 80);
+    ellipse(-50, 65, 45, 70);
+    ellipse(50, 65, 45, 70);
 
-    // -----------------------------------------------------
-    // 2. Barbatanas Dianteiras (Maiores)
-    // -----------------------------------------------------
-    // Esquerda
+    // 2. Barbatanas Dianteiras
     push();
-    translate(-110, -10);
-    rotate(QUARTER_PI / 2);
-    ellipse(0, 0, 110, 50);
+    translate(-95, -15);
+    rotate(QUARTER_PI / 1.8);
+    ellipse(0, 0, 100, 45);
     pop();
 
-    // Direita
     push();
-    translate(110, -10);
-    rotate(-QUARTER_PI / 2);
-    ellipse(0, 0, 110, 50);
+    translate(95, -15);
+    rotate(-QUARTER_PI / 1.8);
+    ellipse(0, 0, 100, 45);
     pop();
 
-    // -----------------------------------------------------
-    // 3. Cabeça e Pescoço
-    // -----------------------------------------------------
+    // 3. Cabeça
     fill(this.corBase);
-    ellipse(0, -110, 45, 60); // Cabeça
-    // Olhinhos
-    fill(30);
-    ellipse(-10, -120, 6, 6);
-    ellipse(10, -120, 6, 6);
+    ellipse(0, -95, 45, 55);
+    
+    // Olhos e Boca
+    fill(20, 40, 30);
+    ellipse(-10, -105, 5, 5);
+    ellipse(10, -105, 5, 5);
+    
+    noFill();
+    stroke(20, 40, 30);
+    strokeWeight(2);
+    arc(0, -95, 12, 10, 0, PI); // Sorriso
+    noStroke();
 
-    // -----------------------------------------------------
-    // 4. Casco Principal (Redondo e Estilizado)
-    // -----------------------------------------------------
+    // 4. Casco
     fill(this.corCasco);
-    ellipse(0, 0, 180, 200);
+    ellipse(0, 0, 160, 175);
 
-    // Borda do Casco (contorno interno para dar profundidade)
+    // Borda interna do casco
     noFill();
     stroke(this.corBase);
     strokeWeight(4);
-    ellipse(0, 0, 160, 180);
+    ellipse(0, 0, 145, 160);
 
-    // -----------------------------------------------------
-    // 5. Padrão Geométrico do Casco (Hexágonos simulados)
-    // -----------------------------------------------------
+    // 5. Hexágonos internos estilo Figma
     fill(this.corBase);
     noStroke();
-    // Hexágono central
-    ellipse(0, 0, 50, 50);
-    // Hexágonos à volta
-    ellipse(0, -55, 40, 40);
-    ellipse(0, 55, 40, 40);
-    ellipse(-50, -25, 40, 40);
-    ellipse(50, -25, 40, 40);
-    ellipse(-50, 25, 40, 40);
-    ellipse(50, 25, 40, 40);
+    ellipse(0, -5, 42, 42);
+    ellipse(0, -48, 32, 32);
+    ellipse(0, 38, 32, 32);
+    ellipse(-38, -22, 32, 32);
+    ellipse(38, -22, 32, 32);
+    ellipse(-38, 15, 32, 32);
+    ellipse(38, 15, 32, 32);
 
-    pop(); // Restaura as definições originais do canvas
-
-    // -----------------------------------------------------
-    // 6. Texto Informativo da Espécie e Saúde
-    // -----------------------------------------------------
-    fill(40, 70, 60);
-    noStroke();
-    textSize(20);
-    textAlign(CENTER, CENTER);
-    text("Espécie: " + this.especie + " (Saúde: " + this.saude + ")", x, y - 160);
+    pop();
   }
 }

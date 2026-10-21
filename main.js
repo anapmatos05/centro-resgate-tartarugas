@@ -282,12 +282,116 @@ function iniciarTurnoJogo() {
 
 function desenhaJogo() {
   background(COR_FUNDO);
+
+  // -----------------------------------------------------
+  // 1. BARRA SUPERIOR BRANCA (UI)
+  // -----------------------------------------------------
+  fill(255);
+  noStroke();
+  rect(0, 0, width, 50);
+
+  // Tempo
+  fill(0);
+  textAlign(LEFT, CENTER);
+  textSize(18);
+  textStyle(BOLD);
+  text("Tempo 01:12", 40, 25);
+
+  // Vidas (Corações Vermelhos)
+  fill(230, 60, 60);
+  ellipse(width / 2 - 25, 25, 20, 20);
+  ellipse(width / 2, 25, 20, 20);
+  ellipse(width / 2 + 25, 25, 20, 20);
+
+  // Barra de Calibração / Microfone (Canto Superior Direito)
+  fill(200, 230, 210);
+  rect(width - 260, 15, 180, 20, 10);
+  fill(120, 180, 140);
+  rect(width - 260, 15, 120, 20, 10);
   
-  // Se existir uma tartaruga ativa, desenha-a no centro do ecrã
+  // Linhas min / máx
+  stroke(80);
+  strokeWeight(2);
+  line(width - 210, 15, width - 210, 35);
+  line(width - 120, 15, width - 120, 35);
+  
+  noStroke();
+  fill(100);
+  textSize(11);
+  textStyle(NORMAL);
+  textAlign(CENTER, TOP);
+  text("min", width - 210, 37);
+  text("máx", width - 120, 37);
+
+  // -----------------------------------------------------
+  // 2. TEXTOS DE ESTADO E PACIENTE
+  // -----------------------------------------------------
+  fill(255);
+  textSize(18);
+  textAlign(LEFT, TOP);
+  text("Tartaruga 2 de 7", 50, 70);
+
+  textAlign(RIGHT, TOP);
+  text("Tartaruga calma  🔊", width - 50, 70);
+
+  // -----------------------------------------------------
+  // 3. BARRA DE SAÚDE CENTRADA
+  // -----------------------------------------------------
   if (tartarugaAtual) {
-    tartarugaAtual.desenhar(width / 2, height / 2);
+    fill(255);
+    textAlign(CENTER, BOTTOM);
+    textSize(16);
+    text("Saúde", width / 2, 105);
+
+    // Contorno escuro da barra
+    fill(40, 70, 70);
+    rect(width / 2 - 150, 110, 300, 26, 14);
+
+    // Preenchimento de Saúde Verde
+    fill(140, 210, 160);
+    let larguraSaude = map(tartarugaAtual.saude, 0, tartarugaAtual.saudeMaxima, 0, 292);
+    rect(width / 2 - 146, 114, larguraSaude, 18, 10);
   }
 
-  // Rodapé obrigatório
+  // -----------------------------------------------------
+  // 4. ELEMENTOS DO CENÁRIO (Tabuleiro, Tartaruga e Barril)
+  // -----------------------------------------------------
+  
+  // Tabuleiro Cinzento da Pinça (Esquerda)
+  fill(210, 218, 215);
+  stroke(170, 180, 175);
+  strokeWeight(3);
+  rect(160, 250, 90, 180, 15);
+  noStroke();
+
+  // Desenhar a Tartaruga no Centro
+  if (tartarugaAtual) {
+    tartarugaAtual.desenhar(width / 2, height / 2 + 30);
+  }
+
+  // Barril de Lixo Vermelho (Direita) - Ilustrado com P5
+  fill(200, 70, 70);
+  rect(width - 200, height - 200, 70, 90, 10);
+  fill(230, 90, 90);
+  rect(width - 205, height - 190, 80, 12, 4);
+  rect(width - 205, height - 130, 80, 12, 4);
+  
+  // Rótulo "Lixo" no Barril
+  fill(255);
+  rect(width - 190, height - 165, 50, 20, 4);
+  fill(50);
+  textSize(12);
+  textAlign(CENTER, CENTER);
+  textStyle(BOLD);
+  text("Lixo", width - 165, height - 155);
+
+  // -----------------------------------------------------
+  // 5. PINÇA E RODAPÉ
+  // -----------------------------------------------------
+  if (pinca) {
+    pinca.atualizar();
+    pinca.desenhar();
+  }
+
   desenhaRodape();
 }
