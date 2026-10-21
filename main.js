@@ -58,7 +58,13 @@ function setup() {
 // -----------------------------------------------------
 
 function draw() {
-  desenhaInicio();
+  if (estado === "inicio") {
+    desenhaInicio();
+  } else if (estado === "execucao") {
+    desenhaJogo();
+  } else if (estado === "resultado") {
+    desenhaResultado();
+  }
 }
 
 
@@ -192,21 +198,52 @@ function desenhaInicio() {
 
 // -----------------------------------------------------
 // ECRÃ DE JOGO
-// (será implementado mais tarde)
 // -----------------------------------------------------
 
 function desenhaJogo() {
+  background(COR_FUNDO);
+  
+  // Teste visual temporário
+  fill(40, 70, 60);
+  textAlign(CENTER, CENTER);
+  textSize(36);
+  text("Ecrã de Jogo a funcionar!", width / 2, height / 2);
 
+  desenhaRodape();
 }
 
 
 // -----------------------------------------------------
 // ECRÃ DE RESULTADOS
-// (será implementado mais tarde)
 // -----------------------------------------------------
 
 function desenhaResultado() {
+  background(COR_FUNDO);
+  desenhaRodape();
+}
 
+
+// -----------------------------------------------------
+// INTERAÇÃO DO RATO (Cliques)
+// -----------------------------------------------------
+
+function mousePressed() {
+  // Se estivermos no ecrã inicial e clicarmos dentro da área do botão "Começar turno"
+  if (estado === "inicio") {
+    let botaoX = width / 2 - 150;
+    let botaoY = 590;
+    let botaoLargura = 300;
+    let botaoAltura = 60;
+
+    if (
+      mouseX >= botaoX &&
+      mouseX <= botaoX + botaoLargura &&
+      mouseY >= botaoY &&
+      mouseY <= botaoY + botaoAltura
+    ) {
+      estado = "execucao"; // Muda para o ecrã de jogo
+    }
+  }
 }
 
 
