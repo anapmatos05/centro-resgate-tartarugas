@@ -1,22 +1,14 @@
-// =====================================================
-// Centro de Resgate de Tartarugas
-// Tema: Sea Turtle Protection
-// Aluna: Ana Matos (33138)
-// =====================================================
-
-
-// -----------------------------------------------------
-// VARIÁVEIS GLOBAIS
-// -----------------------------------------------------
-
-// Estado atual do jogo
-let estado = "inicio";
+// Gestor que sabe em que ecrã estamos (início, execução ou resultado)
+let gestor;
 
 // Imagem do logótipo
 let logo;
 
-let tartarugaAtual = null; // Variável global para guardar a tartaruga ativa no turno
+// Tartaruga ativa no turno
+let tartarugaAtual = null;
 
+// Gestor do microfone (calibração, volume e histerese)
+let microfone;
 
 
 // -----------------------------------------------------
@@ -31,7 +23,7 @@ const ALTURA = 720;
 const TEMA = "Sea Turtle Protection";
 const AUTOR = "Ana Matos · 33138 · ECGM";
 
-// Cor principal do ecrã inicial
+// Cor principal dos ecrãs
 const COR_FUNDO = [175, 200, 192];
 
 
@@ -52,20 +44,24 @@ function preload() {
 
 function setup() {
   createCanvas(LARGURA, ALTURA);
+  gestor = new GestorEstado();
+  microfone = new GestorMicrofone();
 }
 
 
 // -----------------------------------------------------
 // DRAW
-// Executa continuamente
+// Executa continuamente e desenha só o ecrã atual
 // -----------------------------------------------------
 
 function draw() {
-  if (estado === "inicio") {
+  microfone.atualizar(); // lê o volume em todos os frames
+
+  if (gestor.e(ESTADO_INICIO)) {
     desenhaInicio();
-  } else if (estado === "execucao") {
+  } else if (gestor.e(ESTADO_EXECUCAO)) {
     desenhaJogo();
-  } else if (estado === "resultado") {
+  } else if (gestor.e(ESTADO_RESULTADO)) {
     desenhaResultado();
   }
 }
@@ -79,12 +75,14 @@ function desenhaInicio() {
 
   // Fundo
   background(COR_FUNDO);
+  textStyle(NORMAL); // evita herdar o negrito de outro ecrã
 
   // ---------------------------
   // Logótipo
   // ---------------------------
   imageMode(CENTER);
   image(logo, width / 2, 100, 100, 100);
+  imageMode(CORNER); // volta ao normal para não afetar outras imagens
 
   // ---------------------------
   // Título
@@ -157,20 +155,19 @@ function desenhaInicio() {
   textSize(18);
 
   text(
-    "Calibração do microfone (3 s em silêncio)",
+    microfone.mensagem(),
     170,
     450
   );
 
   // ---------------------------
-  // Barra de calibração
-  // (temporária)
+  // Barra de calibração (enche durante os 3 segundos)
   // ---------------------------
   fill(230);
   rect(170, 480, 900, 20, 10);
 
   fill(230, 180, 0);
-  rect(170, 480, 450, 20, 10);
+  rect(170, 480, 900 * microfone.progresso(), 20, 10);
 
   // ---------------------------
   // Ícone temporário do microfone
@@ -181,7 +178,12 @@ function desenhaInicio() {
   // ---------------------------
   // Botão "Começar Turno"
   // ---------------------------
-  fill(230, 180, 0);
+  // O botão só fica amarelo depois de o microfone estar calibrado
+  if (microfone.estaCalibrado()) {
+    fill(230, 180, 0);
+  } else {
+    fill(200);
+  }
   rect(width / 2 - 150, 590, 300, 60, 20);
 
   fill(0);
@@ -202,83 +204,6 @@ function desenhaInicio() {
 // -----------------------------------------------------
 // ECRÃ DE JOGO
 // -----------------------------------------------------
-
-function desenhaJogo() {
-  background(COR_FUNDO);
-  
-  // Teste visual temporário
-  fill(40, 70, 60);
-  textAlign(CENTER, CENTER);
-  textSize(36);
-  text("Ecrã de Jogo a funcionar!", width / 2, height / 2);
-
-  desenhaRodape();
-}
-
-
-// -----------------------------------------------------
-// ECRÃ DE RESULTADOS
-// -----------------------------------------------------
-
-function desenhaResultado() {
-  background(COR_FUNDO);
-  desenhaRodape();
-}
-
-
-// -----------------------------------------------------
-// INTERAÇÃO DO RATO (Cliques)
-// -----------------------------------------------------
-
-function mousePressed() {
-  if (estado === "inicio") {
-    let botaoX = width / 2 - 150;
-    let botaoY = 590;
-    let botaoLargura = 300;
-    let botaoAltura = 60;
-
-    if (
-      mouseX >= botaoX &&
-      mouseX <= botaoX + botaoLargura &&
-      mouseY >= botaoY &&
-      mouseY <= botaoY + botaoAltura
-    ) {
-      estado = "execucao"; 
-      
-      // Gera uma das 7 espécies de tartaruga ao acaso quando o jogo começa
-      tartarugaAtual = new Tartaruga(); 
-    }
-  }
-}
-
-
-
-// -----------------------------------------------------
-// RODAPÉ OBRIGATÓRIO
-// -----------------------------------------------------
-
-function desenhaRodape() {
-
-  const margem = 20;
-
-  fill(0);
-  noStroke();
-  textSize(16);
-
-  // Nome do tema
-  textAlign(LEFT, BOTTOM);
-  text(TEMA, margem, height - margem);
-
-  // Dados da aluna
-  textAlign(RIGHT, BOTTOM);
-  text(AUTOR, width - margem, height - margem);
-}
-// Variável global para guardar a tartaruga ativa no turno
-
-// Quando o jogo começa, criamos a primeira tartaruga
-function iniciarTurnoJogo() {
-  tartarugaAtual = new Tartaruga();
-}
 
 function desenhaJogo() {
   background(COR_FUNDO);
@@ -303,25 +228,30 @@ function desenhaJogo() {
   ellipse(width / 2, 25, 20, 20);
   ellipse(width / 2 + 25, 25, 20, 20);
 
-  // Barra de Calibração / Microfone (Canto Superior Direito)
+  // Barra de volume do microfone (Canto Superior Direito)
+  const barraX = width - 260;
+  const barraL = 180;
+
   fill(200, 230, 210);
-  rect(width - 260, 15, 180, 20, 10);
+  rect(barraX, 15, barraL, 20, 10);
   fill(120, 180, 140);
-  rect(width - 260, 15, 120, 20, 10);
-  
-  // Linhas min / máx
+  rect(barraX, 15, barraL * microfone.volumeNormalizado(), 20, 10);
+
+  // Linhas min / máx (posições reais, calculadas na calibração)
+  const xMin = barraX + barraL * microfone.minNormalizado();
+  const xMax = barraX + barraL * microfone.maxNormalizado();
   stroke(80);
   strokeWeight(2);
-  line(width - 210, 15, width - 210, 35);
-  line(width - 120, 15, width - 120, 35);
-  
+  line(xMin, 15, xMin, 35);
+  line(xMax, 15, xMax, 35);
+
   noStroke();
   fill(100);
   textSize(11);
   textStyle(NORMAL);
   textAlign(CENTER, TOP);
-  text("min", width - 210, 37);
-  text("máx", width - 120, 37);
+  text("min", xMin, 37);
+  text("máx", xMax, 37);
 
   // -----------------------------------------------------
   // 2. TEXTOS DE ESTADO E PACIENTE
@@ -332,7 +262,11 @@ function desenhaJogo() {
   text("Tartaruga 2 de 7", 50, 70);
 
   textAlign(RIGHT, TOP);
-  text("Tartaruga calma  🔊", width - 50, 70);
+  if (microfone.estaAFalar()) {
+    text("Tartaruga calma  🔊", width - 50, 70);
+  } else {
+    text("Tartaruga assustada!", width - 50, 70);
+  }
 
   // -----------------------------------------------------
   // 3. BARRA DE SAÚDE CENTRADA
@@ -356,7 +290,7 @@ function desenhaJogo() {
   // -----------------------------------------------------
   // 4. ELEMENTOS DO CENÁRIO (Tabuleiro, Tartaruga e Barril)
   // -----------------------------------------------------
-  
+
   // Tabuleiro Cinzento da Pinça (Esquerda)
   fill(210, 218, 215);
   stroke(170, 180, 175);
@@ -369,13 +303,13 @@ function desenhaJogo() {
     tartarugaAtual.desenhar(width / 2, height / 2 + 30);
   }
 
-  // Barril de Lixo Vermelho (Direita) - Ilustrado com P5
+  // Barril de Lixo Vermelho (Direita)
   fill(200, 70, 70);
   rect(width - 200, height - 200, 70, 90, 10);
   fill(230, 90, 90);
   rect(width - 205, height - 190, 80, 12, 4);
   rect(width - 205, height - 130, 80, 12, 4);
-  
+
   // Rótulo "Lixo" no Barril
   fill(255);
   rect(width - 190, height - 165, 50, 20, 4);
@@ -387,11 +321,91 @@ function desenhaJogo() {
 
   // -----------------------------------------------------
   // 5. PINÇA E RODAPÉ
+  // A pinça só é usada se já existir (evita erros enquanto o pinca.js não está pronto)
   // -----------------------------------------------------
-  if (pinca) {
+  if (typeof pinca !== "undefined" && pinca) {
     pinca.atualizar();
     pinca.desenhar();
   }
 
   desenhaRodape();
+}
+
+
+// -----------------------------------------------------
+// ECRÃ DE RESULTADOS
+// -----------------------------------------------------
+
+function desenhaResultado() {
+  background(COR_FUNDO);
+  textStyle(NORMAL);
+  desenhaRodape();
+}
+
+
+// -----------------------------------------------------
+// INTERAÇÃO DO RATO (Cliques)
+// -----------------------------------------------------
+
+function mousePressed() {
+  if (gestor.e(ESTADO_INICIO)) {
+
+    // Clique na caixa de calibração: liga o microfone e começa a calibrar
+    if (mouseX >= 150 && mouseX <= 1130 && mouseY >= 430 && mouseY <= 540) {
+      microfone.iniciar();
+    }
+
+    let botaoX = width / 2 - 150;
+    let botaoY = 590;
+    let botaoLargura = 300;
+    let botaoAltura = 60;
+
+    if (
+      microfone.estaCalibrado() &&   // só começa depois da calibração
+      mouseX >= botaoX &&
+      mouseX <= botaoX + botaoLargura &&
+      mouseY >= botaoY &&
+      mouseY <= botaoY + botaoAltura
+    ) {
+      gestor.muda(ESTADO_EXECUCAO);
+
+      // Gera uma das 7 espécies de tartaruga ao acaso quando o jogo começa
+      tartarugaAtual = new Tartaruga();
+    }
+  }
+}
+
+
+// -----------------------------------------------------
+// INTERAÇÃO DO TECLADO
+// -----------------------------------------------------
+
+// Provisório: a barra de espaços termina o turno (só para testar a navegação)
+function keyPressed() {
+  if (gestor.e(ESTADO_EXECUCAO) && key === " ") {
+    gestor.muda(ESTADO_RESULTADO);
+  }
+}
+
+
+// -----------------------------------------------------
+// RODAPÉ OBRIGATÓRIO
+// -----------------------------------------------------
+
+function desenhaRodape() {
+
+  const margem = 20;
+
+  fill(0);
+  noStroke();
+  textStyle(NORMAL);
+  textSize(16);
+
+  // Nome do tema
+  textAlign(LEFT, BOTTOM);
+  text(TEMA, margem, height - margem);
+
+  // Dados da aluna
+  textAlign(RIGHT, BOTTOM);
+  text(AUTOR, width - margem, height - margem);
 }
