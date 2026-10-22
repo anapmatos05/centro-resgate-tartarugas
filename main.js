@@ -10,6 +10,15 @@ let tartarugaAtual = null;
 // Gestor do microfone (calibração, volume e histerese)
 let microfone;
 
+// Pinça controlada pelo rato
+let pinca;
+
+// Lixo que está em cima da tartaruga atual
+let lixos = [];
+
+// Pontuação do turno
+let pontos = 0;
+
 
 // -----------------------------------------------------
 // CONFIGURAÇÕES DO CANVAS
@@ -18,6 +27,9 @@ let microfone;
 // Dimensões do protótipo do Figma
 const LARGURA = 1280;
 const ALTURA = 720;
+
+// Zona do barril do lixo (usada nas colisões; igual ao barril desenhado)
+const BARRIL = { x: LARGURA - 205, y: ALTURA - 200, w: 80, h: 90 };
 
 // Informações obrigatórias do enunciado
 const TEMA = "Sea Turtle Protection";
@@ -46,6 +58,7 @@ function setup() {
   createCanvas(LARGURA, ALTURA);
   gestor = new GestorEstado();
   microfone = new GestorMicrofone();
+  pinca = new Pinca();
 }
 
 
@@ -76,6 +89,7 @@ function desenhaInicio() {
   // Fundo
   background(COR_FUNDO);
   textStyle(NORMAL); // evita herdar o negrito de outro ecrã
+  cursor(ARROW);     // cursor normal (no jogo é substituído pela pinça)
 
   // ---------------------------
   // Logótipo
@@ -207,6 +221,7 @@ function desenhaInicio() {
 
 function desenhaJogo() {
   background(COR_FUNDO);
+  noCursor(); // a pinça faz de cursor
 
   // -----------------------------------------------------
   // 1. BARRA SUPERIOR BRANCA (UI)
@@ -221,6 +236,7 @@ function desenhaJogo() {
   textSize(18);
   textStyle(BOLD);
   text("Tempo 01:12", 40, 25);
+  text("Pontos " + pontos, 250, 25);
 
   // Vidas (Corações Vermelhos)
   fill(230, 60, 60);
@@ -320,13 +336,16 @@ function desenhaJogo() {
   text("Lixo", width - 165, height - 155);
 
   // -----------------------------------------------------
-  // 5. PINÇA E RODAPÉ
-  // A pinça só é usada se já existir (evita erros enquanto o pinca.js não está pronto)
+  // 5. LIXO, PINÇA E RODAPÉ
   // -----------------------------------------------------
-  if (typeof pinca !== "undefined" && pinca) {
-    pinca.atualizar();
-    pinca.desenhar();
+  // Lixo que ainda está na tartaruga
+  for (const l of lixos) {
+    l.desenhar();
   }
+
+  // A pinça é desenhada por cima de tudo
+  pinca.atualizar();
+  pinca.desenhar();
 
   desenhaRodape();
 }
@@ -339,6 +358,7 @@ function desenhaJogo() {
 function desenhaResultado() {
   background(COR_FUNDO);
   textStyle(NORMAL);
+  cursor(ARROW);
   desenhaRodape();
 }
 
@@ -370,7 +390,21 @@ function mousePressed() {
       gestor.muda(ESTADO_EXECUCAO);
 
       // Gera uma das 7 espécies de tartaruga ao acaso quando o jogo começa
-      tartarugaAtual = new Tartaruga();
+      pontos = 0;
+      novaTartaruga();
+    }
+  } else if (gestor.e(ESTADO_EXECUCAO)) {
+    pinca.apanhar(lixos);   // tenta agarrar o lixo
+  }
+}
+
+
+// Corre quando se solta o botão do rato
+function mouseReleased() {
+  if (gestor.e(ESTADO_EXECUCAO)) {
+    if (pinca.largar(BARRIL)) {   // true = o lixo foi para o barril
+      pontos += 10;
+      verificaTartarugaSalva();
     }
   }
 }
@@ -408,4 +442,33 @@ function desenhaRodape() {
   // Dados da aluna
   textAlign(RIGHT, BOTTOM);
   text(AUTOR, width - margem, height - margem);
+}
+
+
+// -----------------------------------------------------
+// LÓGICA DO TURNO
+// -----------------------------------------------------
+
+// Cria uma tartaruga nova (espécie ao acaso) com o lixo que lhe corresponde
+function novaTartaruga() {
+  tartarugaAtual = new Tartaruga();
+  criaLixos();
+}
+
+// Cria tantos lixos quantos a espécie da tartaruga pede (qtdLixo)
+function criaLixos() {
+  lixos = [];
+  for (let i = 0; i < tartarugaAtual.qtdLixo; i++) {
+    lixos.push(new Lixo(width / 2, height / 2 + 30));
+  }
+}
+
+// Remove o lixo já recolhido. Se já não sobrar nenhum, a tartaruga está salva.
+function verificaTartarugaSalva() {
+  lixos = lixos.filter(l => !l.recolhido);
+
+  if (lixos.length === 0) {
+    pontos += 100;      // bónus por salvar a tartaruga
+    novaTartaruga();    // chega a próxima
+  }
 }
