@@ -1,17 +1,29 @@
+const PINCA_LARGURA = 110;     // largura com que a imagem aparece no jogo (em px)
+
+// Onde está a PONTA da pinça dentro da imagem, em fração de 0 a 1.
+// (0, 0) = canto superior esquerdo; (1, 1) = canto inferior direito.
+// Exemplo: pinça na diagonal com a ponta em baixo à esquerda = (0.1, 0.95)
+const PINCA_PONTA_X = 0.1;
+const PINCA_PONTA_Y = 0.95;
+
+// true = mostra um ponto vermelho na ponta, para ajustares os valores acima.
+// Quando estiver certo, põe false.
+const PINCA_MOSTRAR_PONTA = true;
+// ------------------------------------------------------------
+
 class Pinca {
   constructor() {
-    // Posição inicial: em cima do tabuleiro da esquerda
-    this.x = 205;
+    this.x = 205;       // posição da ponta da pinça
     this.y = 340;
     this.lixo = null;   // lixo que está a ser segurado (ou null)
   }
 
-  // Chamado em cada draw(): a pinça segue o rato
+  // Chamado em cada draw(): a ponta da pinça segue o rato
   atualizar() {
     this.x = constrain(mouseX, 0, width);
     this.y = constrain(mouseY, 50, height);
 
-    // Se estiver a segurar lixo, o lixo acompanha a pinça
+    // Se estiver a segurar lixo, o lixo acompanha a ponta
     if (this.lixo) {
       this.lixo.x = this.x;
       this.lixo.y = this.y;
@@ -47,28 +59,25 @@ class Pinca {
     return false;
   }
 
-  // Desenha a pinça (duas hastes que fecham quando segura lixo)
+  // Desenha a imagem da pinça com a ponta no sítio do rato
   desenhar() {
-    push();
-    translate(this.x, this.y);
-    rotate(-0.6);               // inclinada, como no Figma
+    const larg = PINCA_LARGURA;
+    const alt = larg * imgPinca.height / imgPinca.width;   // mantém as proporções
 
-    const a = this.lixo ? 2 : 8;  // abertura: fechada com lixo, aberta sem lixo
-    const comprimento = 95;
+    imageMode(CORNER);
+    image(
+      imgPinca,
+      this.x - PINCA_PONTA_X * larg,   // desloca a imagem para a ponta ficar no rato
+      this.y - PINCA_PONTA_Y * alt,
+      larg,
+      alt
+    );
 
-    strokeCap(ROUND);
-    strokeWeight(7);
-
-    // Hastes azul-claras
-    stroke(205, 228, 238);
-    line(-a, 0, -a * 2, -comprimento);
-    line(a, 0, a * 2, -comprimento);
-
-    // Pontas laranja
-    stroke(240, 180, 80);
-    line(-a, 0, -a * 1.15, -16);
-    line(a, 0, a * 1.15, -16);
-
-    pop();
+    // Ponto vermelho na ponta (só para calibrar)
+    if (PINCA_MOSTRAR_PONTA) {
+      fill(255, 0, 0);
+      noStroke();
+      ellipse(this.x, this.y, 8, 8);
+    }
   }
 }

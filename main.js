@@ -4,6 +4,9 @@ let gestor;
 // Imagem do logótipo
 let logo;
 
+// Imagem da pinça (desenhada por ti)
+let imgPinca;
+
 // Tartaruga ativa no turno
 let tartarugaAtual = null;
 
@@ -31,6 +34,9 @@ const ALTURA = 720;
 // Zona do barril do lixo (usada nas colisões; igual ao barril desenhado)
 const BARRIL = { x: LARGURA - 205, y: ALTURA - 200, w: 80, h: 90 };
 
+// Caminho da imagem da pinça (muda para o nome real do teu ficheiro)
+const CAMINHO_PINCA = "assets/imagens/pinca.png";
+
 // Informações obrigatórias do enunciado
 const TEMA = "Sea Turtle Protection";
 const AUTOR = "Ana Matos · 33138 · ECGM";
@@ -46,6 +52,7 @@ const COR_FUNDO = [175, 200, 192];
 
 function preload() {
   logo = loadImage("assets/imagens/logotartaruga.png");
+  imgPinca = loadImage(CAMINHO_PINCA);
 }
 
 
