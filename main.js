@@ -61,6 +61,11 @@ let mensagemCor = [255, 255, 255];
 // Curiosidade selecionada aleatoriamente para o ecrã final
 let curiosidade = "";
 
+let mostrarFicha = true;      // Começa visível no início de cada tartaruga
+let tempoFichaInicio = 0;     // Guarda o momento em que a ficha apareceu
+const DURACAO_FICHA = 10000;  // 10 segundos em milissegundos
+// Objeto que define o botão da ficha no ecrã
+const BTN_FICHA = { x: 50, y: 110, w: 120, h: 35, texto: "📋 Ver Ficha" };
 
 // -----------------------------------------------------
 // CONFIGURAÇÕES DO CANVAS
@@ -359,6 +364,31 @@ function desenhaJogo() {
     text(mensagem, width / 2, 170);
   }
 
+  // Botão para ver a ficha médica do paciente
+  desenhaBotaoPequeno(BTN_FICHA);
+
+  // Ficha de Paciente (aparece automaticamente nos primeiros 10 segundos ou se o jogador clicar no botão)
+  if ((mostrarFicha && millis() - tempoFichaInicio < DURACAO_FICHA) || mostrarFicha) {
+    if (tartarugaAtual) {
+      fill(255, 245);
+      noStroke();
+      rect(width / 2 - 250, height / 2 - 140, 500, 280, 20);
+
+      fill(60, 120, 90);
+      textStyle(BOLD);
+      textSize(20);
+      textAlign(CENTER, TOP);
+      text("Ficha de Paciente: Tartaruga-" + tartarugaAtual.especie, width / 2, height / 2 - 120);
+
+      fill(40);
+      textStyle(NORMAL);
+      textSize(15);
+      textAlign(LEFT, TOP);
+      let infoTexto = obtemInfoCientifica(tartarugaAtual.especie);
+      text(infoTexto, width / 2 - 220, height / 2 - 80, 440, 200);
+    }
+  }
+
   desenhaRodape();
 }
 
@@ -426,7 +456,12 @@ function mousePressed() {
       iniciaTurno();
     }
   } else if (gestor.e(ESTADO_EXECUCAO)) {
-    pinca.apanhar(lixos); // Tenta agarrar o lixo com a pinça
+    // Se clicar no botão da ficha, alterna entre mostrar/esconder
+    if (ratoDentro(BTN_FICHA)) {
+      mostrarFicha = !mostrarFicha;
+    } else {
+      pinca.apanhar(lixos); // Tenta agarrar o lixo com a pinça
+    }
   } else if (gestor.e(ESTADO_RESULTADO)) {
     // Navegação nos botões do ecrã final
     if (ratoDentro(BTN_REPETIR)) {
@@ -510,15 +545,19 @@ function iniciaTurno() {
 function novaTartaruga() {
   pinca.lixo = null; // Garante que a pinça não leva lixo pendurado de arrasto
 
-  // Se completar as 7 espécies durante o turno, baralha novamente para continuar o ciclo
+  // Se completar as 7 espécies durante o turno, termina com sucesso
   if (indiceMissao >= listaEspecies.length) {
-  terminaTurno();
-  return;
-}
+    terminaTurno();
+    return;
+  }
 
   // Instancia a nova tartaruga através do índice atual da lista de missões
   tartarugaAtual = new Tartaruga(indiceMissao);
   indiceMissao++;
+
+  // Ativa a ficha do novo paciente
+  mostrarFicha = true;
+  tempoFichaInicio = millis();
   
   criaLixos();
 }
@@ -607,6 +646,47 @@ function formataTempo(ms) {
 
 
 // ---------------------- FUNÇÕES AUXILIARES DOS ECRÃS ----------------------
+
+// Devolve a informação científica para a ficha de paciente
+function obtemInfoCientifica(especie) {
+  switch (especie) {
+    case "Verde":
+      return "• Dieta: Herbívora (prados marinhos)\n• Ameaça: Ingestão de plástico flutuante\n• Dificuldade: 1 lixo (Estável)";
+    case "Comum":
+      return "• Dieta: Carnívora (crustáceos e moluscos)\n• Ameaça: Redes e anzóis de pesca\n• Dificuldade: 3 lixos (Exigente)";
+    case "Oliva":
+      return "• Dieta: Omnívora (águas abertas)\n• Ameaça: Redes de emalhar abandonadas\n• Dificuldade: 1 lixo (Frágil)";
+    case "Pente":
+      return "• Dieta: Recifes de coral (esponjas)\n• Ameaça: Poluição de recifes\n• Dificuldade: 2 lixos (Bónus duplo!)";
+    case "Couro":
+      return "• Dieta: Pelágica (especializada em alforrecas)\n• Ameaça: Confunde sacos com presas\n• Dificuldade: 4 lixos (Muito alta)";
+    case "Australiana":
+      return "• Dieta: Águas costeiras rasas\n• Ameaça: Tráfego marítimo e lixo costeiro\n• Dificuldade: 2 lixos (Moderada)";
+    case "Kemp":
+      return "• Dieta: Marisco e caranguejos\n• Ameaça: Criticamente ameaçada de extinção\n• Dificuldade: 1 lixo crítico (Bónus duplo!)";
+    default:
+      return "Espécie sob proteção prioritária do centro.";
+  }
+}
+
+// Desenha o botão pequeno da ficha
+function desenhaBotaoPequeno(b) {
+  if (ratoDentro(b)) {
+    fill(240, 200, 50);
+  } else {
+    fill(255);
+  }
+  stroke(120, 150, 140);
+  strokeWeight(2);
+  rect(b.x, b.y, b.w, b.h, 10);
+
+  fill(40);
+  noStroke();
+  textAlign(CENTER, CENTER);
+  textSize(14);
+  textStyle(BOLD);
+  text(b.texto, b.x + b.w / 2, b.y + b.h / 2);
+}
 
 // Desenha caixas de cartões informativos com título e corpo de texto formatado
 function desenhaCartao(x, y, w, h, titulo, corpo) {
