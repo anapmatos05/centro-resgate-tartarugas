@@ -512,9 +512,9 @@ function novaTartaruga() {
 
   // Se completar as 7 espécies durante o turno, baralha novamente para continuar o ciclo
   if (indiceMissao >= listaEspecies.length) {
-    listaEspecies = shuffle(["Verde", "Comum", "Oliva", "Pente", "Couro", "Australiana", "Kemp"]);
-    indiceMissao = 0;
-  }
+  terminaTurno();
+  return;
+}
 
   // Instancia a nova tartaruga através do índice atual da lista de missões
   tartarugaAtual = new Tartaruga(indiceMissao);
