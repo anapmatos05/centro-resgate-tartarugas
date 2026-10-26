@@ -1,8 +1,3 @@
-// =====================================================
-// GestorEstado.js
-// Guarda em que ecrã o jogo está e permite mudar de ecrã.
-// =====================================================
-
 // Os 3 estados obrigatórios do enunciado
 const ESTADO_INICIO = "inicio";
 const ESTADO_EXECUCAO = "execucao";

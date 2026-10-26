@@ -1,21 +1,17 @@
-// =====================================================
-// Centro de Resgate de Tartarugas
-// tartaruga.js - Classe responsável pelas 7 espécies
-// =====================================================
-
-class Tartaruga {
-  constructor() {
+ class Tartaruga {
+  constructor(indiceEspecie) {
     const especiesDisponiveis = [
       "Verde", 
       "Comum", 
       "Oliva", 
-      "Australiana", 
-      "Couro", 
       "Pente", 
+      "Couro", 
+      "Australiana",
       "Kemp"
     ];
-    
-    this.especie = random(especiesDisponiveis);
+    // Garante que o índice fica entre 0 e 6 para não dar erro
+    let index = constrain(indiceEspecie, 0, especiesDisponiveis.length - 1);
+    this.especie = especiesDisponiveis[index];
     this.inicializarEspecie();
   }
 
@@ -48,23 +44,24 @@ class Tartaruga {
         this.escala = 0.85;
         break;
 
-      case "Couro":
-        this.saudeMaxima = 120;
-        this.saude = 120;
-        this.qtdLixo = 4;
-        this.corCasco = color(60, 75, 85);
-        this.corBase = color(120, 135, 145);
-        this.escala = 1.25;
-        break;
+    case "Couro":
+            this.saudeMaxima = 120;
+            this.saude = 120;
+            this.qtdLixo = 4;
+            this.corCasco = color(60, 75, 85);
+            this.corBase = color(120, 135, 145);
+            this.escala = 1.25;
+            break;
+
 
       case "Pente":
-        this.saudeMaxima = 70;
-        this.saude = 70;
-        this.qtdLixo = 2;
-        this.corCasco = color(170, 110, 60);
-        this.corBase = color(220, 170, 120);
-        this.escala = 0.9;
-        break;
+              this.saudeMaxima = 70;
+              this.saude = 70;
+              this.qtdLixo = 2;
+              this.corCasco = color(170, 110, 60);
+              this.corBase = color(220, 170, 120);
+              this.escala = 0.9;
+              break;
 
       case "Australiana":
         this.saudeMaxima = 100;
@@ -75,6 +72,7 @@ class Tartaruga {
         this.escala = 1.0;
         break;
 
+        
       case "Kemp":
         this.saudeMaxima = 50;
         this.saude = 50;

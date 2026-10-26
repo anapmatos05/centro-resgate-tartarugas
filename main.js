@@ -1,53 +1,92 @@
-// Gestor que sabe em que ecrã estamos (início, execução ou resultado)
+// Regras do turno (ajusta aqui para equilibrar o jogo)
+const TEMPO_TURNO = 120000;   // Duração total do turno: 2 minutos (em milissegundos)
+const VIDAS_INICIAIS = 3;     // Vidas totais do centro de resgate
+const DESCIDA_SAUDE = 8;      // Saúde perdida por segundo quando a tartaruga NÃO está calma
+
+// Curiosidades educativas para mostrar no ecrã final (escolhida ao acaso)
+const CURIOSIDADES = [
+  "Só 7 das mais de 300 espécies de tartarugas vivem no mar.",
+  "Um saco de plástico pode ser confundido com uma medusa e engolido por uma tartaruga.",
+  "As sete espécies de tartarugas-marinhas estão todas ameaçadas de extinção.",
+  "Reduzir o plástico e pôr o lixo no sítio certo ajuda a proteger os oceanos.",
+  "Redes e linhas de pesca abandonadas podem prender e ferir as tartarugas."
+];
+
+// Configuração dos botões do ecrã de resultados
+const BTN_REPETIR = { x: 141, y: 525, w: 498, h: 72, texto: "Voltar a jogar" };
+const BTN_INICIO = { x: 663, y: 525, w: 498, h: 72, texto: "Regressar ao início" };
+
+
+// -----------------------------------------------------
+// VARIÁVEIS GLOBAIS
+// -----------------------------------------------------
+
+// Gestor de estados: sabe exatamente em que ecrã estamos (início, execução ou resultado)
 let gestor;
 
-// Imagem do logótipo
+// Imagem do logótipo oficial do centro
 let logo;
 
-// Imagem da pinça (desenhada por ti)
+// Imagem da pinça veterinária (controlada pelo rato)
 let imgPinca;
 
-// Tartaruga ativa no turno
+// Tartaruga que está atualmente a ser tratada no centro
 let tartarugaAtual = null;
 
-// Gestor do microfone (calibração, volume e histerese)
+// Gestor do microfone (trata da calibração, leitura de volume e histerese)
 let microfone;
 
-// Pinça controlada pelo rato
+// Pinça usada pelo jogador
 let pinca;
 
-// Lixo que está em cima da tartaruga atual
+// Lista com os resíduos de lixo que estão em cima da tartaruga atual
 let lixos = [];
 
-// Pontuação do turno
+// Variáveis de estado do turno atual
 let pontos = 0;
+let vidas = VIDAS_INICIAIS;
+let salvas = 0;               // Contador de tartarugas salvas com sucesso
+let lixoRecolhido = 0;        // Contador de lixo levado para o barril
+let inicioTurno = 0;          // Regista o momento exato em que o turno começou (millis)
+
+// Gestão do Passaporte das 7 Tartarugas (sequência baralhada por turno)
+let listaEspecies = [];
+let indiceMissao = 0;
+
+// Sistema de mensagens curtas no ecrã (ex.: "Tartaruga salva!")
+let mensagem = "";
+let mensagemFim = 0;
+let mensagemCor = [255, 255, 255];
+
+// Curiosidade selecionada aleatoriamente para o ecrã final
+let curiosidade = "";
 
 
 // -----------------------------------------------------
 // CONFIGURAÇÕES DO CANVAS
 // -----------------------------------------------------
 
-// Dimensões do protótipo do Figma
+// Dimensões padrão baseadas no protótipo do Figma
 const LARGURA = 1280;
 const ALTURA = 720;
 
-// Zona do barril do lixo (usada nas colisões; igual ao barril desenhado)
+// Coordenadas da zona do barril de lixo (usada para detetar colisões)
 const BARRIL = { x: LARGURA - 205, y: ALTURA - 200, w: 80, h: 90 };
 
-// Caminho da imagem da pinça (muda para o nome real do teu ficheiro)
+// Caminho do ficheiro de imagem da pinça
 const CAMINHO_PINCA = "assets/imagens/pinca.png";
 
-// Informações obrigatórias do enunciado
+// Informações obrigatórias exigidas pelo enunciado
 const TEMA = "Sea Turtle Protection";
 const AUTOR = "Ana Matos · 33138 · ECGM";
 
-// Cor principal dos ecrãs
+// Cor de fundo principal dos ecrãs do jogo
 const COR_FUNDO = [175, 200, 192];
 
 
 // -----------------------------------------------------
 // PRELOAD
-// Carrega imagens e sons antes do jogo arrancar
+// Carrega imagens e recursos antes de o jogo arrancar
 // -----------------------------------------------------
 
 function preload() {
@@ -58,7 +97,7 @@ function preload() {
 
 // -----------------------------------------------------
 // SETUP
-// Executa apenas uma vez
+// Executa apenas uma vez no arranque da aplicação
 // -----------------------------------------------------
 
 function setup() {
@@ -71,15 +110,16 @@ function setup() {
 
 // -----------------------------------------------------
 // DRAW
-// Executa continuamente e desenha só o ecrã atual
+// Executa continuamente em cada frame e desenha o ecrã ativo
 // -----------------------------------------------------
 
 function draw() {
-  microfone.atualizar(); // lê o volume em todos os frames
+  microfone.atualizar(); // Lê o volume do microfone em todos os frames
 
   if (gestor.e(ESTADO_INICIO)) {
     desenhaInicio();
   } else if (gestor.e(ESTADO_EXECUCAO)) {
+    atualizaJogo();   // Gere o tempo limite, a saúde e as vidas
     desenhaJogo();
   } else if (gestor.e(ESTADO_RESULTADO)) {
     desenhaResultado();
@@ -92,114 +132,72 @@ function draw() {
 // -----------------------------------------------------
 
 function desenhaInicio() {
-
-  // Fundo
   background(COR_FUNDO);
-  textStyle(NORMAL); // evita herdar o negrito de outro ecrã
-  cursor(ARROW);     // cursor normal (no jogo é substituído pela pinça)
+  textStyle(NORMAL); // Evita herdar o negrito de outros ecrãs
+  cursor(ARROW);     // Cursor normal do rato (no jogo é substituído pela pinça)
 
-  // ---------------------------
-  // Logótipo
-  // ---------------------------
+  // Logótipo centralizado no topo
   imageMode(CENTER);
   image(logo, width / 2, 100, 100, 100);
-  imageMode(CORNER); // volta ao normal para não afetar outras imagens
+  imageMode(CORNER); // Restaura o modo normal de imagem
 
-  // ---------------------------
-  // Título
-  // ---------------------------
+  // Título principal
   fill(60, 120, 90);
   noStroke();
-
   textAlign(CENTER, CENTER);
   textSize(42);
+  text("Centro de Resgate de Tartarugas", width / 2, 180);
 
-  text(
-    "Centro de Resgate de Tartarugas",
-    width / 2,
-    180
-  );
-
-  // ---------------------------
-  // Cartão Objetivo
-  // ---------------------------
+  // Cartão com os Objetivos do Jogo
   fill(255);
   rect(150, 220, 470, 170, 20);
-
   fill(80, 140, 90);
   textAlign(LEFT, TOP);
   textSize(18);
-
   text("Objetivo", 170, 240);
-
   fill(50);
   textSize(16);
-
   text(
     "Salva o máximo de tartarugas em 2 minutos,\n" +
     "sem perderes as 3 vidas do centro.\n" +
     "+100 por tartaruga salva\n" +
     "+10 por lixo no barril",
-    170,
-    280
+    170, 280
   );
 
-  // ---------------------------
-  // Cartão Como Jogar
-  // ---------------------------
+  // Cartão de Como Jogar
   fill(255);
   rect(660, 220, 470, 170, 20);
-
   fill(80, 140, 90);
   textSize(18);
-
   text("Como jogar", 680, 240);
-
   fill(50);
   textSize(16);
-
   text(
     "Rato: leva o lixo até ao barril.\n" +
     "Voz: fala para acalmar a tartaruga.\n" +
     "Sem saúde, perdes uma vida.",
-    680,
-    280
+    680, 280
   );
 
-  // ---------------------------
-  // Caixa de calibração
-  // ---------------------------
+  // Caixa interativa de calibração do microfone
   fill(255);
   rect(150, 430, 980, 110, 20);
-
   fill(80, 140, 90);
   textSize(18);
+  text(microfone.mensagem(), 170, 450);
 
-  text(
-    microfone.mensagem(),
-    170,
-    450
-  );
-
-  // ---------------------------
-  // Barra de calibração (enche durante os 3 segundos)
-  // ---------------------------
+  // Barra de progresso da calibração (enche durante os 3 segundos)
   fill(230);
   rect(170, 480, 900, 20, 10);
-
   fill(230, 180, 0);
   rect(170, 480, 900 * microfone.progresso(), 20, 10);
 
-  // ---------------------------
-  // Ícone temporário do microfone
-  // ---------------------------
+  // Ícone decorativo do microfone
   fill(245, 225, 180);
   ellipse(1090, 490, 35, 35);
 
-  // ---------------------------
-  // Botão "Começar Turno"
-  // ---------------------------
-  // O botão só fica amarelo depois de o microfone estar calibrado
+  // Botão "Começar turno" (só fica ativo/amarelo após calibrar o microfone)
   if (microfone.estaCalibrado()) {
     fill(230, 180, 0);
   } else {
@@ -210,48 +208,45 @@ function desenhaInicio() {
   fill(0);
   textAlign(CENTER, CENTER);
   textSize(20);
+  text("Começar turno", width / 2, 620);
 
-  text(
-    "Começar turno",
-    width / 2,
-    620
-  );
-
-  // Rodapé obrigatório
   desenhaRodape();
 }
 
 
 // -----------------------------------------------------
-// ECRÃ DE JOGO
+// ECRÃ DE JOGO (EXECUÇÃO)
 // -----------------------------------------------------
 
 function desenhaJogo() {
   background(COR_FUNDO);
-  noCursor(); // a pinça faz de cursor
+  noCursor(); // O cursor do sistema desaparece porque a pinça assume essa função
 
-  // -----------------------------------------------------
-  // 1. BARRA SUPERIOR BRANCA (UI)
-  // -----------------------------------------------------
+  // 1. BARRA SUPERIOR BRANCA (Interface do Utilizador / HUD)
   fill(255);
   noStroke();
   rect(0, 0, width, 50);
 
-  // Tempo
+  // Relógio com o tempo restante e pontuação atual
   fill(0);
   textAlign(LEFT, CENTER);
   textSize(18);
   textStyle(BOLD);
-  text("Tempo 01:12", 40, 25);
+  const restante = max(0, TEMPO_TURNO - (millis() - inicioTurno));
+  text("Tempo " + formataTempo(restante), 40, 25);
   text("Pontos " + pontos, 250, 25);
 
-  // Vidas (Corações Vermelhos)
-  fill(230, 60, 60);
-  ellipse(width / 2 - 25, 25, 20, 20);
-  ellipse(width / 2, 25, 20, 20);
-  ellipse(width / 2 + 25, 25, 20, 20);
+  // Indicador de vidas (vermelhas para vidas ativas, cinzentas para as perdidas)
+  for (let i = 0; i < VIDAS_INICIAIS; i++) {
+    if (i < vidas) {
+      fill(230, 60, 60);
+    } else {
+      fill(200, 205, 205);
+    }
+    ellipse(width / 2 - 25 + i * 25, 25, 20, 20);
+  }
 
-  // Barra de volume do microfone (Canto Superior Direito)
+  // Barra de volume do microfone (canto superior direito)
   const barraX = width - 260;
   const barraL = 180;
 
@@ -260,7 +255,7 @@ function desenhaJogo() {
   fill(120, 180, 140);
   rect(barraX, 15, barraL * microfone.volumeNormalizado(), 20, 10);
 
-  // Linhas min / máx (posições reais, calculadas na calibração)
+  // Linhas indicadoras dos limiares mínimo e máximo da histerese
   const xMin = barraX + barraL * microfone.minNormalizado();
   const xMax = barraX + barraL * microfone.maxNormalizado();
   stroke(80);
@@ -276,13 +271,17 @@ function desenhaJogo() {
   text("min", xMin, 37);
   text("máx", xMax, 37);
 
-  // -----------------------------------------------------
-  // 2. TEXTOS DE ESTADO E PACIENTE
-  // -----------------------------------------------------
+  // 2. TEXTOS DE ESTADO DA TARTARUGA E PACIENTE
   fill(255);
   textSize(18);
   textAlign(LEFT, TOP);
-  text("Tartaruga 2 de 7", 50, 70);
+  text("Tartarugas salvas: " + salvas, 50, 70);
+
+  // Mostra no topo o nome da espécie atual que está a ser tratada
+  if (tartarugaAtual) {
+    textAlign(CENTER, TOP);
+    text("Espécie: Tartaruga-" + tartarugaAtual.especie, width / 2, 70);
+  }
 
   textAlign(RIGHT, TOP);
   if (microfone.estaAFalar()) {
@@ -291,49 +290,49 @@ function desenhaJogo() {
     text("Tartaruga assustada!", width - 50, 70);
   }
 
-  // -----------------------------------------------------
-  // 3. BARRA DE SAÚDE CENTRADA
-  // -----------------------------------------------------
+  // 3. BARRA DE SAÚDE DA TARTARUGA (CENTRAL)
   if (tartarugaAtual) {
     fill(255);
     textAlign(CENTER, BOTTOM);
     textSize(16);
     text("Saúde", width / 2, 105);
 
-    // Contorno escuro da barra
+    // Contorno exterior da barra de saúde
     fill(40, 70, 70);
     rect(width / 2 - 150, 110, 300, 26, 14);
 
-    // Preenchimento de Saúde Verde
-    fill(140, 210, 160);
+    // Preenchimento dinâmico (verde normal, vermelho se estiver quase a esgotar)
+    const fracao = tartarugaAtual.saude / tartarugaAtual.saudeMaxima;
+    if (fracao < 0.3) {
+      fill(230, 90, 80);
+    } else {
+      fill(140, 210, 160);
+    }
     let larguraSaude = map(tartarugaAtual.saude, 0, tartarugaAtual.saudeMaxima, 0, 292);
     rect(width / 2 - 146, 114, larguraSaude, 18, 10);
   }
 
-  // -----------------------------------------------------
-  // 4. ELEMENTOS DO CENÁRIO (Tabuleiro, Tartaruga e Barril)
-  // -----------------------------------------------------
-
-  // Tabuleiro Cinzento da Pinça (Esquerda)
+  // 4. ELEMENTOS VISUAIS DO CENÁRIO
+  // Tabuleiro cinzento de apoio à esquerda
   fill(210, 218, 215);
   stroke(170, 180, 175);
   strokeWeight(3);
   rect(160, 250, 90, 180, 15);
   noStroke();
 
-  // Desenhar a Tartaruga no Centro
+  // Desenha a tartaruga ativa no centro do ecrã
   if (tartarugaAtual) {
     tartarugaAtual.desenhar(width / 2, height / 2 + 30);
   }
 
-  // Barril de Lixo Vermelho (Direita)
+  // Barril de recolha de lixo vermelho (à direita)
   fill(200, 70, 70);
   rect(width - 200, height - 200, 70, 90, 10);
   fill(230, 90, 90);
   rect(width - 205, height - 190, 80, 12, 4);
   rect(width - 205, height - 130, 80, 12, 4);
 
-  // Rótulo "Lixo" no Barril
+  // Rótulo identificativo "Lixo" no barril
   fill(255);
   rect(width - 190, height - 165, 50, 20, 4);
   fill(50);
@@ -342,30 +341,59 @@ function desenhaJogo() {
   textStyle(BOLD);
   text("Lixo", width - 165, height - 155);
 
-  // -----------------------------------------------------
-  // 5. LIXO, PINÇA E RODAPÉ
-  // -----------------------------------------------------
-  // Lixo que ainda está na tartaruga
+  // 5. LIXO, PINÇA E MENSAGENS DE FEEDBACK
   for (const l of lixos) {
     l.desenhar();
   }
 
-  // A pinça é desenhada por cima de tudo
+  // A pinça segue o rato e é desenhada por cima de todos os elementos
   pinca.atualizar();
   pinca.desenhar();
+
+  // Mensagem temporária no ecrã (ex.: quando salva ou perde uma tartaruga)
+  if (millis() < mensagemFim) {
+    fill(mensagemCor);
+    textAlign(CENTER, CENTER);
+    textStyle(BOLD);
+    textSize(28);
+    text(mensagem, width / 2, 170);
+  }
 
   desenhaRodape();
 }
 
 
 // -----------------------------------------------------
-// ECRÃ DE RESULTADOS
+// ECRÃ DE RESULTADOS (FIM DE TURNO)
 // -----------------------------------------------------
 
 function desenhaResultado() {
   background(COR_FUNDO);
   textStyle(NORMAL);
   cursor(ARROW);
+
+  // Título principal de conclusão
+  fill(60, 120, 90);
+  noStroke();
+  textAlign(CENTER, CENTER);
+  textStyle(BOLD);
+  textSize(56);
+  text("Turno concluído", width / 2, 120);
+
+  // Cartão com as estatísticas finais do turno
+  desenhaCartao(141, 200, 498, 290, "Resultado final",
+    "Pontos: " + pontos + "\n" +
+    "Tartarugas salvas: " + salvas + "\n" +
+    "Lixo recolhido: " + lixoRecolhido + "\n" +
+    "Vidas perdidas: " + (VIDAS_INICIAIS - vidas));
+
+  // Cartão com a curiosidade educativa escolhida aleatoriamente
+  desenhaCartao(663, 200, 498, 290, "Sabias que?", curiosidade);
+
+  // Botões de navegação final
+  desenhaBotao(BTN_REPETIR);
+  desenhaBotao(BTN_INICIO);
+
   desenhaRodape();
 }
 
@@ -376,8 +404,7 @@ function desenhaResultado() {
 
 function mousePressed() {
   if (gestor.e(ESTADO_INICIO)) {
-
-    // Clique na caixa de calibração: liga o microfone e começa a calibrar
+    // Clica na caixa de calibração para ligar o microfone
     if (mouseX >= 150 && mouseX <= 1130 && mouseY >= 430 && mouseY <= 540) {
       microfone.iniciar();
     }
@@ -387,30 +414,36 @@ function mousePressed() {
     let botaoLargura = 300;
     let botaoAltura = 60;
 
+    // Só inicia o turno se o microfone já estiver totalmente calibrado
     if (
-      microfone.estaCalibrado() &&   // só começa depois da calibração
+      microfone.estaCalibrado() &&
       mouseX >= botaoX &&
       mouseX <= botaoX + botaoLargura &&
       mouseY >= botaoY &&
       mouseY <= botaoY + botaoAltura
     ) {
       gestor.muda(ESTADO_EXECUCAO);
-
-      // Gera uma das 7 espécies de tartaruga ao acaso quando o jogo começa
-      pontos = 0;
-      novaTartaruga();
+      iniciaTurno();
     }
   } else if (gestor.e(ESTADO_EXECUCAO)) {
-    pinca.apanhar(lixos);   // tenta agarrar o lixo
+    pinca.apanhar(lixos); // Tenta agarrar o lixo com a pinça
+  } else if (gestor.e(ESTADO_RESULTADO)) {
+    // Navegação nos botões do ecrã final
+    if (ratoDentro(BTN_REPETIR)) {
+      gestor.muda(ESTADO_EXECUCAO);
+      iniciaTurno();
+    } else if (ratoDentro(BTN_INICIO)) {
+      gestor.muda(ESTADO_INICIO);
+    }
   }
 }
 
-
-// Corre quando se solta o botão do rato
+// Executado quando o utilizador liberta o botão do rato
 function mouseReleased() {
   if (gestor.e(ESTADO_EXECUCAO)) {
-    if (pinca.largar(BARRIL)) {   // true = o lixo foi para o barril
+    if (pinca.largar(BARRIL)) { // Se largar o lixo dentro do barril correto
       pontos += 10;
+      lixoRecolhido++;
       verificaTartarugaSalva();
     }
   }
@@ -421,10 +454,10 @@ function mouseReleased() {
 // INTERAÇÃO DO TECLADO
 // -----------------------------------------------------
 
-// Provisório: a barra de espaços termina o turno (só para testar a navegação)
+// Atalho de teste: tecla espaço termina o turno imediatamente
 function keyPressed() {
   if (gestor.e(ESTADO_EXECUCAO) && key === " ") {
-    gestor.muda(ESTADO_RESULTADO);
+    terminaTurno();
   }
 }
 
@@ -434,7 +467,6 @@ function keyPressed() {
 // -----------------------------------------------------
 
 function desenhaRodape() {
-
   const margem = 20;
 
   fill(0);
@@ -442,27 +474,56 @@ function desenhaRodape() {
   textStyle(NORMAL);
   textSize(16);
 
-  // Nome do tema
+  // Nome do tema do projeto no canto inferior esquerdo
   textAlign(LEFT, BOTTOM);
   text(TEMA, margem, height - margem);
 
-  // Dados da aluna
+  // Dados da aluna no canto inferior direito
   textAlign(RIGHT, BOTTOM);
   text(AUTOR, width - margem, height - margem);
 }
 
 
 // -----------------------------------------------------
-// LÓGICA DO TURNO
+// LÓGICA DO TURNO (PASSAPORTE DAS 7 ESPÉCIES)
 // -----------------------------------------------------
 
-// Cria uma tartaruga nova (espécie ao acaso) com o lixo que lhe corresponde
+// Inicia um turno novo: põe tudo a zero e baralha as 7 espécies para criar a progressão
+function iniciaTurno() {
+  pontos = 0;
+  vidas = VIDAS_INICIAIS;
+  salvas = 0;
+  lixoRecolhido = 0;
+  
+  // Lista com as 7 espécies marinhas baralhadas ao acaso em cada nova partida
+  const especiesDisponiveis = ["Verde", "Comum", "Oliva", "Pente", "Couro", "Australiana", "Kemp"];
+  listaEspecies = shuffle(especiesDisponiveis);
+  indiceMissao = 0;
+
+  mensagem = "";
+  mensagemFim = 0;
+  inicioTurno = millis();
+  novaTartaruga();
+}
+
+// Cria uma nova tartaruga com base na sequência baralhada do passaporte
 function novaTartaruga() {
-  tartarugaAtual = new Tartaruga();
+  pinca.lixo = null; // Garante que a pinça não leva lixo pendurado de arrasto
+
+  // Se completar as 7 espécies durante o turno, baralha novamente para continuar o ciclo
+  if (indiceMissao >= listaEspecies.length) {
+    listaEspecies = shuffle(["Verde", "Comum", "Oliva", "Pente", "Couro", "Australiana", "Kemp"]);
+    indiceMissao = 0;
+  }
+
+  // Instancia a nova tartaruga através do índice atual da lista de missões
+  tartarugaAtual = new Tartaruga(indiceMissao);
+  indiceMissao++;
+  
   criaLixos();
 }
 
-// Cria tantos lixos quantos a espécie da tartaruga pede (qtdLixo)
+// Gera os resíduos de lixo em cima da tartaruga conforme a exigência da espécie
 function criaLixos() {
   lixos = [];
   for (let i = 0; i < tartarugaAtual.qtdLixo; i++) {
@@ -470,12 +531,120 @@ function criaLixos() {
   }
 }
 
-// Remove o lixo já recolhido. Se já não sobrar nenhum, a tartaruga está salva.
+// Verifica se todo o lixo da tartaruga foi limpo; se sim, ganha bónus e passa à próxima
 function verificaTartarugaSalva() {
   lixos = lixos.filter(l => !l.recolhido);
 
   if (lixos.length === 0) {
-    pontos += 100;      // bónus por salvar a tartaruga
-    novaTartaruga();    // chega a próxima
+    const ganho = pontosDaEspecie(tartarugaAtual);
+    pontos += ganho;
+    salvas++;
+    mostraMensagem("Tartaruga salva! +" + ganho, [40, 120, 70]);
+    novaTartaruga();
   }
+}
+
+// Atualização contínua do jogo (tempo decorrido e perda de saúde se estiver assustada)
+function atualizaJogo() {
+  const decorrido = millis() - inicioTurno;
+
+  // Verifica se o tempo de 2 minutos esgotou
+  if (decorrido >= TEMPO_TURNO) {
+    terminaTurno();
+    return;
+  }
+
+  // A saúde só desce se a tartaruga estiver assustada (jogador em silêncio)
+  if (!microfone.estaAFalar()) {
+    const dificuldade = 1 + decorrido / TEMPO_TURNO;
+    const segundos = min(deltaTime, 100) / 1000; // Evita saltos se o separador ficar inativo
+    tartarugaAtual.saude -= DESCIDA_SAUDE * dificuldade * segundos;
+  }
+
+  // Se a saúde chegar a zero, a tartaruga morre e o centro perde uma vida
+  if (tartarugaAtual.saude <= 0) {
+    tartarugaAtual.saude = 0;
+    vidas--;
+    mostraMensagem("Tartaruga perdida!", [200, 60, 60]);
+
+    if (vidas <= 0) {
+      terminaTurno(); // Fim do jogo se esgotar as vidas
+    } else {
+      novaTartaruga(); // Chega um novo paciente ao hospital
+    }
+  }
+}
+
+// Encerra o turno e transita para o ecrã de resultados
+function terminaTurno() {
+  pinca.lixo = null;
+  curiosidade = random(CURIOSIDADES); // Escolhe uma curiosidade aleatória para o fim
+  gestor.muda(ESTADO_RESULTADO);
+}
+
+// Atribui pontuação diferenciada (espécies criticamente ameaçadas dão mais pontos)
+function pontosDaEspecie(t) {
+  if (t.especie === "Pente" || t.especie === "Kemp") {
+    return 200;
+  }
+  return 100;
+}
+
+// Ativa uma mensagem flutuante temporária no ecrã (dura 1.5 segundos)
+function mostraMensagem(texto, cor) {
+  mensagem = texto;
+  mensagemCor = cor;
+  mensagemFim = millis() + 1500;
+}
+
+// Converte milissegundos num formato legível de relógio "mm:ss"
+function formataTempo(ms) {
+  const totalSeg = ceil(ms / 1000);
+  const m = floor(totalSeg / 60);
+  const seg = totalSeg % 60;
+  return nf(m, 2) + ":" + nf(seg, 2);
+}
+
+
+// ---------------------- FUNÇÕES AUXILIARES DOS ECRÃS ----------------------
+
+// Desenha caixas de cartões informativos com título e corpo de texto formatado
+function desenhaCartao(x, y, w, h, titulo, corpo) {
+  fill(255);
+  noStroke();
+  rect(x, y, w, h, 28);
+
+  fill(60, 120, 90);
+  textAlign(LEFT, TOP);
+  textStyle(BOLD);
+  textSize(26);
+  text(titulo, x + 24, y + 22);
+
+  fill(40, 55, 80);
+  textStyle(NORMAL);
+  textSize(24);
+  text(corpo, x + 24, y + 70, w - 48, h - 90);
+}
+
+// Desenha botões interativos (muda de cor ao passar o rato por cima)
+function desenhaBotao(b) {
+  if (ratoDentro(b)) {
+    fill(255, 200, 40);
+  } else {
+    fill(230, 180, 0);
+  }
+  noStroke();
+  rect(b.x, b.y, b.w, b.h, 30);
+
+  fill(20);
+  textAlign(CENTER, CENTER);
+  textStyle(BOLD);
+  textSize(26);
+  text(b.texto, b.x + b.w / 2, b.y + b.h / 2);
+}
+
+// Função auxiliar que valida se o cursor do rato se encontra dentro de um botão
+function ratoDentro(b) {
+  return mouseX > b.x && mouseX < b.x + b.w &&
+         mouseY > b.y && mouseY < b.y + b.h;
 }
