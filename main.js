@@ -42,6 +42,8 @@ let pinca;
 // Lista com os resíduos de lixo que estão em cima da tartaruga atual
 let lixos = [];
 
+let somLixo; // Som de recolha de lixo (quando largado no barril)
+
 // Variáveis de estado do turno atual
 let pontos = 0;
 let vidas = VIDAS_INICIAIS;
@@ -61,9 +63,12 @@ let mensagemCor = [255, 255, 255];
 // Curiosidade selecionada aleatoriamente para o ecrã final
 let curiosidade = "";
 
-let mostrarFicha = true;      // Começa visível no início de cada tartaruga
+// NOVO: evita pousar a pinça logo a seguir a pegar nela (o mesmo clique faz press + release)
+let pegouAgora = false;
+
+let mostrarFicha = false;     // Começa fechada (só abre nos primeiros 10s ou ao clicar no botão)
 let tempoFichaInicio = 0;     // Guarda o momento em que a ficha apareceu
-const DURACAO_FICHA = 10000;  // 10 segundos em milissegundos
+const DURACAO_FICHA = 5000;  // 5 segundos em milissegundos
 // Objeto que define o botão da ficha no ecrã
 const BTN_FICHA = { x: 50, y: 110, w: 120, h: 35, texto: "📋 Ver Ficha" };
 
@@ -77,6 +82,9 @@ const ALTURA = 720;
 
 // Coordenadas da zona do barril de lixo (usada para detetar colisões)
 const BARRIL = { x: LARGURA - 205, y: ALTURA - 200, w: 80, h: 90 };
+
+// Coordenadas do suporte da pinça
+const SUPORTE_APOIO = { x: 160, y: 250, w: 90, h: 180 };
 
 // Caminho do ficheiro de imagem da pinça
 const CAMINHO_PINCA = "assets/imagens/pinca.png";
@@ -97,6 +105,7 @@ const COR_FUNDO = [175, 200, 192];
 function preload() {
   logo = loadImage("assets/imagens/logotartaruga.png");
   imgPinca = loadImage(CAMINHO_PINCA);
+  somLixo = loadSound("assets/sons/lixo.mp3");
 }
 
 
@@ -225,7 +234,19 @@ function desenhaInicio() {
 
 function desenhaJogo() {
   background(COR_FUNDO);
-  noCursor(); // O cursor do sistema desaparece porque a pinça assume essa função
+
+  // ALTERADO: gestão do cursor.
+  // - Rato sobre o botão da ficha: cursor normal (mão) para poderes clicar
+  // - Pinça pousada: cursor normal (mão se estiver sobre o tabuleiro, seta no resto)
+  // - Pinça na mão: o cursor do sistema desaparece (a pinça faz de cursor)
+  const sobreBotaoFicha = ratoDentro(BTN_FICHA);
+  if (sobreBotaoFicha) {
+    cursor(HAND);
+  } else if (pinca.pousada) {
+    cursor(ratoNoSuporte() ? HAND : ARROW);
+  } else {
+    noCursor();
+  }
 
   // 1. BARRA SUPERIOR BRANCA (Interface do Utilizador / HUD)
   fill(255);
@@ -242,15 +263,19 @@ function desenhaJogo() {
   text("Pontos " + pontos, 250, 25);
 
   // Indicador de vidas (vermelhas para vidas ativas, cinzentas para as perdidas)
+  // Indicador de vidas com corações
+  textSize(22);
+  textAlign(CENTER, CENTER);
   for (let i = 0; i < VIDAS_INICIAIS; i++) {
+    let xPos = width / 2 - 30 + i * 30;
+    let yPos = 25;
+    
     if (i < vidas) {
-      fill(230, 60, 60);
+      text("❤️", xPos, yPos); // Vida ativa
     } else {
-      fill(200, 205, 205);
+      text("🤍", xPos, yPos); 
     }
-    ellipse(width / 2 - 25 + i * 25, 25, 20, 20);
   }
-
   // Barra de volume do microfone (canto superior direito)
   const barraX = width - 260;
   const barraL = 180;
@@ -281,12 +306,6 @@ function desenhaJogo() {
   textSize(18);
   textAlign(LEFT, TOP);
   text("Tartarugas salvas: " + salvas, 50, 70);
-
-  // Mostra no topo o nome da espécie atual que está a ser tratada
-  if (tartarugaAtual) {
-    textAlign(CENTER, TOP);
-    text("Espécie: Tartaruga-" + tartarugaAtual.especie, width / 2, 70);
-  }
 
   textAlign(RIGHT, TOP);
   if (microfone.estaAFalar()) {
@@ -351,9 +370,13 @@ function desenhaJogo() {
     l.desenhar();
   }
 
-  // A pinça segue o rato e é desenhada por cima de todos os elementos
+  // A pinça segue o rato (se não estiver pousada) e é desenhada por cima dos elementos
   pinca.atualizar();
-  pinca.desenhar();
+  // ALTERADO: esconde a pinça enquanto o rato está no botão da ficha (para se ver o cursor).
+  // Se a pinça estiver pousada no tabuleiro, desenha-se sempre.
+  if (pinca.pousada || !sobreBotaoFicha) {
+    pinca.desenhar();
+  }
 
   // Mensagem temporária no ecrã (ex.: quando salva ou perde uma tartaruga)
   if (millis() < mensagemFim) {
@@ -367,25 +390,31 @@ function desenhaJogo() {
   // Botão para ver a ficha médica do paciente
   desenhaBotaoPequeno(BTN_FICHA);
 
-  // Ficha de Paciente (aparece automaticamente nos primeiros 10 segundos ou se o jogador clicar no botão)
-  if ((mostrarFicha && millis() - tempoFichaInicio < DURACAO_FICHA) || mostrarFicha) {
+  // Ficha de Paciente (aparece automaticamente nos primeiros 10 segundos ou quando clicas no botão)
+  let tempoPassado = millis() - tempoFichaInicio;
+  if (tempoPassado < DURACAO_FICHA || mostrarFicha) {
     if (tartarugaAtual) {
+      let fichaX = width - 400; // Posição horizontal (centrada)
+      let fichaY = 120; // Posição vertical
+      let fichaW = 380;              // Largura da ficha
+      let fichaH = 150;              // Altura da ficha
+
       fill(255, 245);
       noStroke();
-      rect(width / 2 - 250, height / 2 - 140, 500, 280, 20);
+      rect(fichaX, fichaY, fichaW, fichaH, 20);
 
       fill(60, 120, 90);
       textStyle(BOLD);
-      textSize(20);
+      textSize(18);
       textAlign(CENTER, TOP);
-      text("Ficha de Paciente: Tartaruga-" + tartarugaAtual.especie, width / 2, height / 2 - 120);
+      text("Ficha de Paciente: Tartaruga-" + tartarugaAtual.especie, fichaX + fichaW / 2, fichaY + 20);
 
       fill(40);
       textStyle(NORMAL);
       textSize(15);
       textAlign(LEFT, TOP);
       let infoTexto = obtemInfoCientifica(tartarugaAtual.especie);
-      text(infoTexto, width / 2 - 220, height / 2 - 80, 440, 200);
+      text(infoTexto, fichaX + 30, fichaY + 60, fichaW - 60, fichaH - 80);
     }
   }
 
@@ -456,11 +485,19 @@ function mousePressed() {
       iniciaTurno();
     }
   } else if (gestor.e(ESTADO_EXECUCAO)) {
-    // Se clicar no botão da ficha, alterna entre mostrar/esconder
+    // ALTERADO: três situações possíveis
     if (ratoDentro(BTN_FICHA)) {
+      // 1) Clique no botão da ficha: alterna entre mostrar/esconder
       mostrarFicha = !mostrarFicha;
+    } else if (pinca.pousada) {
+      // 2) Pinça pousada: só pega nela se o clique for em cima do tabuleiro
+      if (ratoNoSuporte()) {
+        pinca.pegarDoSuporte(mouseX, mouseY);
+        pegouAgora = true; // o "soltar" deste mesmo clique não deve voltar a pousá-la
+      }
     } else {
-      pinca.apanhar(lixos); // Tenta agarrar o lixo com a pinça
+      // 3) Pinça na mão: tenta agarrar o lixo
+      pinca.apanhar(lixos);
     }
   } else if (gestor.e(ESTADO_RESULTADO)) {
     // Navegação nos botões do ecrã final
@@ -475,27 +512,33 @@ function mousePressed() {
 
 // Executado quando o utilizador liberta o botão do rato
 function mouseReleased() {
-  if (gestor.e(ESTADO_EXECUCAO)) {
-    if (pinca.largar(BARRIL)) { // Se largar o lixo dentro do barril correto
-      pontos += 10;
-      lixoRecolhido++;
-      verificaTartarugaSalva();
+  if (!gestor.e(ESTADO_EXECUCAO)) return;
+
+  // NOVO: se acabaste de pegar na pinça, ignora este "soltar" (é o mesmo clique)
+  if (pegouAgora) {
+    pegouAgora = false;
+    return;
+  }
+
+  // NOVO: com a pinça pousada não há nada para largar
+  if (pinca.pousada) return;
+
+  if (pinca.largarNoSuporte(SUPORTE_APOIO)) {
+    // O lixo fica pousado no suporte e continua disponível no tabuleiro.
+  } else if (pinca.largar(BARRIL)) { // Se largar o lixo dentro do barril correto
+    pontos += 10;
+    lixoRecolhido++;
+
+    //Toca som aqui
+    if(somLixo){
+      somLixo.play();
     }
+    verificaTartarugaSalva();
+  } else if (!pinca.lixo && ratoNoSuporte()) {
+    // Mãos vazias e rato sobre o tabuleiro: pousa a pinça
+    pinca.pousarNoSuporte(SUPORTE_APOIO);
   }
 }
-
-
-// -----------------------------------------------------
-// INTERAÇÃO DO TECLADO
-// -----------------------------------------------------
-
-// Atalho de teste: tecla espaço termina o turno imediatamente
-function keyPressed() {
-  if (gestor.e(ESTADO_EXECUCAO) && key === " ") {
-    terminaTurno();
-  }
-}
-
 
 // -----------------------------------------------------
 // RODAPÉ OBRIGATÓRIO
@@ -529,7 +572,12 @@ function iniciaTurno() {
   vidas = VIDAS_INICIAIS;
   salvas = 0;
   lixoRecolhido = 0;
-  
+
+  // NOVO: a pinça começa sempre pousada no tabuleiro, sem lixo
+  pegouAgora = false;
+  pinca.lixo = null;
+  pinca.pousarNoSuporte(SUPORTE_APOIO);
+
   // Lista com as 7 espécies marinhas baralhadas ao acaso em cada nova partida
   const especiesDisponiveis = ["Verde", "Comum", "Oliva", "Pente", "Couro", "Australiana", "Kemp"];
   listaEspecies = shuffle(especiesDisponiveis);
@@ -556,17 +604,20 @@ function novaTartaruga() {
   indiceMissao++;
 
   // Ativa a ficha do novo paciente
-  mostrarFicha = true;
+  mostrarFicha = false; // Começa fechada para o temporizador gerir
   tempoFichaInicio = millis();
-  
+
   criaLixos();
 }
 
 // Gera os resíduos de lixo em cima da tartaruga conforme a exigência da espécie
 function criaLixos() {
   lixos = [];
-  for (let i = 0; i < tartarugaAtual.qtdLixo; i++) {
-    lixos.push(new Lixo(width / 2, height / 2 + 30));
+  let especieAtual = tartarugaAtual.especie;
+  let qtd = tartarugaAtual.qtdLixo; // Certifica-te de que a tartaruga define a quantidade de lixo
+
+  for (let i = 0; i < qtd; i++) {
+    lixos.push(new Lixo(width / 2, height / 2 + 30, especieAtual));
   }
 }
 
@@ -667,7 +718,7 @@ function obtemInfoCientifica(especie) {
     default:
       return "Espécie sob proteção prioritária do centro.";
   }
-}
+}s
 
 // Desenha o botão pequeno da ficha
 function desenhaBotaoPequeno(b) {
@@ -727,4 +778,10 @@ function desenhaBotao(b) {
 function ratoDentro(b) {
   return mouseX > b.x && mouseX < b.x + b.w &&
          mouseY > b.y && mouseY < b.y + b.h;
+}
+
+// NOVO: verifica se o rato está por cima do tabuleiro cinzento onde a pinça pousa
+function ratoNoSuporte() {
+  return mouseX >= SUPORTE_APOIO.x && mouseX <= SUPORTE_APOIO.x + SUPORTE_APOIO.w &&
+         mouseY >= SUPORTE_APOIO.y && mouseY <= SUPORTE_APOIO.y + SUPORTE_APOIO.h;
 }

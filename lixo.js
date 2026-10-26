@@ -1,6 +1,8 @@
 class Lixo {
-  // (cx, cy) é o centro da tartaruga: o lixo aparece perto dele, ao acaso
-  constructor(cx, cy) {
+  // Recebe a espécie da tartaruga para ajustar o comportamento e propriedades do lixo
+  constructor(cx, cy, especie) {
+    this.especie = especie;
+    
     // Tipo de lixo sorteado ao acaso
     this.tipo = random(["saco", "rede", "toxico"]);
 
@@ -12,13 +14,28 @@ class Lixo {
 
     this.x = this.xOrigem;
     this.y = this.yOrigem;
-    this.raio = 22;          // usado nas colisões
+    
+    // Ajusta o tamanho/raio consoante a espécie (ex: Pente exige mais precisão por ser mais pequeno)
+    if (this.especie === "Pente") {
+      this.raio = 12; 
+    } else {
+      this.raio = 22;
+    }
 
-    this.apanhado = false;   // true enquanto a pinça o segura
-    this.recolhido = false;  // true quando já foi para o barril
+    this.apanhado = false;    // true enquanto a pinça o segura
+    this.recolhido = false;   // true quando já foi para o barril
   }
 
-  // Desenha o lixo conforme o tipo
+  // Atualiza comportamentos especiais por espécie (ex: flutuação da Tartaruga-Couro)
+  atualizar() {
+    if (this.especie === "Couro" && !this.apanhado && !this.recolhido) {
+      // Efeito de plástico que flutua suavemente na água
+      this.x = this.xOrigem + sin(millis() / 400) * 12;
+      this.y = this.yOrigem + cos(millis() / 500) * 8;
+    }
+  }
+
+  // Desenha o lixo conforme o tipo e a espécie
   desenhar() {
     push();
     translate(this.x, this.y);
@@ -26,6 +43,11 @@ class Lixo {
     // Quando está apanhado, fica um pouco maior para se notar
     if (this.apanhado) {
       scale(1.15);
+    }
+
+    // Se for da espécie Pente, desenha mais pequeno para refletir a exigência da tabela
+    if (this.especie === "Pente") {
+      scale(0.6);
     }
 
     if (this.tipo === "saco") {
@@ -71,7 +93,6 @@ class Lixo {
 
   // Colisão círculo-retângulo: o lixo está em cima do barril?
   noBarril(b) {
-    // ponto do retângulo mais próximo do centro do lixo
     const mx = constrain(this.x, b.x, b.x + b.w);
     const my = constrain(this.y, b.y, b.y + b.h);
     return dist(this.x, this.y, mx, my) < this.raio;

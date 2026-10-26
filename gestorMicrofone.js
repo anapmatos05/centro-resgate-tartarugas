@@ -169,7 +169,9 @@ class GestorMicrofone {
 
   // Escala usada para desenhar a barra de volume (0 a 1)
   escala() {
-    return this.estado === MIC_PRONTO ? this.max * 1.5 : 0.1;
+    // Garante um valor mínimo de segurança para evitar divisões por zero ou valores absurdos
+    let referencia = (this.max > 0.001) ? this.max : 0.05;
+    return this.estado === MIC_PRONTO ? referencia * 1.5 : 0.1;
   }
 
   volumeNormalizado() {
