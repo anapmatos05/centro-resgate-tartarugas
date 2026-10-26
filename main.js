@@ -718,7 +718,7 @@ function obtemInfoCientifica(especie) {
     default:
       return "Espécie sob proteção prioritária do centro.";
   }
-}s
+}
 
 // Desenha o botão pequeno da ficha
 function desenhaBotaoPequeno(b) {

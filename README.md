@@ -88,6 +88,6 @@
 ---
 
 ### Declaração de Utilização de Inteligência Artificial
-* **Ferramentas utilizadas:** ChatGPT / Gemini.
+* **Ferramentas utilizadas:** Claude / Gemini.
 * **Finalidade:** Apoio no esclarecimento da matemática das curvas de Bézier para o desenho do HUD de corações, otimização de caminhos para execução no servidor local Apache/XAMPP e revisão linguística/estrutural da documentação.
 * **Decisões/Alterações efetuadas pela estudante:** Toda a arquitetura do jogo, adaptação dos limiares de histerese, lógica de eventos de rato para a pinça veterinária e integração dos recursos multimédia foram testados, ajustados e validados autonomamente pela estudante.
